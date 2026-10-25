@@ -1,0 +1,10 @@
+pyproject.toml
+src/mesh_subdivision_viewer/__init__.py
+src/mesh_subdivision_viewer/__main__.py
+src/mesh_subdivision_viewer/mesh.py
+src/mesh_subdivision_viewer.egg-info/PKG-INFO
+src/mesh_subdivision_viewer.egg-info/SOURCES.txt
+src/mesh_subdivision_viewer.egg-info/dependency_links.txt
+src/mesh_subdivision_viewer.egg-info/requires.txt
+src/mesh_subdivision_viewer.egg-info/top_level.txt
+tests/test_mesh.py

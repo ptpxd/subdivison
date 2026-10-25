@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mesh-subdivision-viewer"
+version = "0.1.0"
+description = "A small desktop viewer for triangular mesh subdivision"
+requires-python = ">=3.11"
+dependencies = [
+    "pyvista",
+    "pyvistaqt",
+    "PySide6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
