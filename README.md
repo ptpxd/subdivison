@@ -27,15 +27,23 @@ csomagokat. Ezután a második elindítja a programot.
 1. A **File → Open mesh...** menüpontban válassz egy `.stl` vagy `.obj` fájlt.
 2. Az egér húzásával forgasd a modellt, az egérgörgővel nagyíts vagy kicsinyíts.
 3. A **Mesh → Subdivision scheme** menüben válaszd ki a **Loop** vagy
-   **Butterfly** módszert.
-4. A **Mesh → Subdivision iterations** menüben válassz 1–4 iterációt. Az `N`
-   billentyű elindítja a kiválasztott számú finomítási menetet; egy iteráció
-   a teljes aktuális hálón végigfutó subdivision műveletet jelent.
+   **Butterfly** módszert. A módszer kiválasztása csak a következő művelet
+   beállítása; önmagában nem módosítja a hálót.
+4. A **Mesh → Subdivision iterations** menüben válassz 1–4 iterációt. Ez is
+   csak beállítás: a finomítást a **Mesh → Subdivide mesh** művelet vagy az
+   `N` billentyű indítja el. Egy iteráció a teljes aktuális hálón végigfutó
+   subdivision menetet jelent.
 5. Nyomd meg az `R` billentyűt a háló legutóbbi betöltött állapotának
-   visszaállításához. Ez a már elvégzett iterációkat nullázza, a kiválasztott
-   iterációszámot és subdivision módszert megtartja.
+   visszaállításához. Ez törli az előző művelet eredmény-összegzését, nullázza
+   az elvégzett iterációkat, és megtartja a kiválasztott iterációszámot és
+   subdivision módszert.
 6. Nyomd meg a `W` billentyűt a flat shading és a dróthálós nézet közötti
    váltáshoz.
+
+A sikeres finomítás összegzése megmutatja a választott módszert, a menetek
+számát, valamint a háló oldallapjainak számát a művelet előtt és után. Az
+összegzés külön mezőben marad látható akkor is, ha másik beállítást választasz;
+új háló betöltése vagy visszaállítása törli, mert új alapállapotot ad meg.
 
 Ha a fájl nem olvasható vagy a háló topológiája nem támogatott, a program
 hibaüzenetet jelenít meg, és nyitva marad.

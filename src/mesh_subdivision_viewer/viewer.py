@@ -8,6 +8,7 @@ from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QLabel,
     QMainWindow,
     QMessageBox,
 )
@@ -39,11 +40,15 @@ class MeshViewerWindow(QMainWindow):
         self._iteration_count = 1
         self._applied_iterations = 0
         self._scheme = SubdivisionScheme.LOOP
+        self._last_subdivision_summary: str | None = None
         self._display_mode = DisplayMode.FLAT_SHADED
 
         self.plotter = QtInteractor(self)
         self.setCentralWidget(self.plotter)
         self._create_menus()
+        self._result_label = QLabel("No subdivision applied.")
+        self._result_label.setObjectName("subdivisionResult")
+        self.statusBar().addPermanentWidget(self._result_label)
         self.statusBar().showMessage(
             "Open an STL or OBJ file. N: subdivide; W: change display mode. "
             "Each iteration is one complete pass over the mesh."
@@ -62,6 +67,7 @@ class MeshViewerWindow(QMainWindow):
 
         mesh_menu = self.menuBar().addMenu("&Mesh")
         scheme_menu = mesh_menu.addMenu("&Subdivision scheme")
+        scheme_menu.setToolTipsVisible(True)
         scheme_group = QActionGroup(self)
         scheme_group.setExclusive(True)
         self._scheme_actions: dict[SubdivisionScheme, QAction] = {}
@@ -71,6 +77,11 @@ class MeshViewerWindow(QMainWindow):
         ):
             action = QAction(label, self, checkable=True)
             action.setChecked(scheme is self._scheme)
+            action.setToolTip(
+                "Selects the method for the next operation; choose "
+                "Subdivide mesh or press N to apply it."
+            )
+            action.setStatusTip(action.toolTip())
             action.triggered.connect(
                 lambda checked=False, selected=scheme: self._select_scheme(selected)
             )
@@ -79,6 +90,7 @@ class MeshViewerWindow(QMainWindow):
             self._scheme_actions[scheme] = action
 
         iteration_menu = mesh_menu.addMenu("&Subdivision iterations")
+        iteration_menu.setToolTipsVisible(True)
         iteration_group = QActionGroup(self)
         iteration_group.setExclusive(True)
         self._iteration_actions: dict[int, QAction] = {}
@@ -86,6 +98,11 @@ class MeshViewerWindow(QMainWindow):
             unit = "iteration" if count == 1 else "iterations"
             action = QAction(f"{count} {unit}", self, checkable=True)
             action.setChecked(count == self._iteration_count)
+            action.setToolTip(
+                "Selects the number of passes for the next operation; choose "
+                "Subdivide mesh or press N to apply it."
+            )
+            action.setStatusTip(action.toolTip())
             action.triggered.connect(
                 lambda checked=False, selected=count: self._select_iteration_count(
                     selected
@@ -104,6 +121,7 @@ class MeshViewerWindow(QMainWindow):
         iterate_action.setStatusTip(iterate_action.toolTip())
         iterate_action.triggered.connect(self.subdivide_selected)
         mesh_menu.addAction(iterate_action)
+        self._subdivide_action = iterate_action
 
         reset_action = QAction("&Reset to loaded mesh", self)
         reset_action.setShortcut(QKeySequence("R"))
@@ -141,6 +159,10 @@ class MeshViewerWindow(QMainWindow):
         self._mesh = mesh
         self._loaded_mesh = mesh
         self._applied_iterations = 0
+        self._last_subdivision_summary = None
+        self._result_label.setText(
+            f"Loaded mesh: {len(mesh.faces)} faces; no subdivision applied."
+        )
         self._display_mode = DisplayMode.FLAT_SHADED
         self._show_mesh(reset_camera=True)
         self.statusBar().showMessage(
@@ -151,20 +173,25 @@ class MeshViewerWindow(QMainWindow):
     def _select_scheme(self, scheme: SubdivisionScheme) -> None:
         self._scheme = scheme
         self._scheme_actions[scheme].setChecked(True)
-        self.statusBar().showMessage(f"Subdivision scheme: {scheme.value.title()}")
+        self.statusBar().showMessage(
+            f"Selected {scheme.value.title()}. Choose Subdivide mesh or press N "
+            "to apply it."
+        )
 
     def _select_iteration_count(self, count: int) -> None:
         self._iteration_count = count
         self._iteration_actions[count].setChecked(True)
         self.statusBar().showMessage(
-            f"Next subdivision applies {count} complete "
-            f"{'iteration' if count == 1 else 'iterations'}."
+            f"Selected {count} complete "
+            f"{'iteration' if count == 1 else 'iterations'}; choose Subdivide "
+            "mesh or press N to apply."
         )
 
     def subdivide_selected(self) -> None:
         if self._mesh is None:
             self.statusBar().showMessage("Load a valid mesh before subdividing.")
             return
+        face_count_before = len(self._mesh.faces)
         try:
             refined = self._mesh
             for _ in range(self._iteration_count):
@@ -177,12 +204,15 @@ class MeshViewerWindow(QMainWindow):
         self._mesh = refined
         self._applied_iterations += self._iteration_count
         self._show_mesh(reset_camera=False)
-        self.statusBar().showMessage(
+        summary = (
             f"{self._scheme.value.title()} subdivision: applied "
             f"{self._iteration_count} "
-            f"{'iteration' if self._iteration_count == 1 else 'iterations'} "
-            f"({self._applied_iterations} total)."
+            f"{'pass' if self._iteration_count == 1 else 'passes'}; faces "
+            f"{face_count_before} -> {len(refined.faces)}."
         )
+        self._last_subdivision_summary = summary
+        self._result_label.setText(summary)
+        self.statusBar().showMessage(summary)
 
     def reset_mesh(self) -> None:
         if self._loaded_mesh is None:
@@ -194,6 +224,11 @@ class MeshViewerWindow(QMainWindow):
 
         self._mesh = self._loaded_mesh
         self._applied_iterations = 0
+        self._last_subdivision_summary = None
+        self._result_label.setText(
+            f"Loaded mesh: {len(self._loaded_mesh.faces)} faces; "
+            "no subdivision applied."
+        )
         self._show_mesh(reset_camera=False)
         self.statusBar().showMessage(
             "Mesh reset to loaded state; 0 subdivision iterations applied."

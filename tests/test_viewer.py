@@ -65,6 +65,26 @@ def test_iteration_count_selector_defaults_to_one_and_offers_one_through_four(
     assert "4 complete iterations" in viewer.statusBar().currentMessage()
 
 
+def test_setting_selection_preserves_mesh_and_last_result_feedback(viewer):
+    viewer.load_mesh_path("tests/fixtures/tetrahedron_ascii.stl")
+    viewer.subdivide_selected()
+    current_mesh = viewer._mesh
+    result_summary = viewer._last_subdivision_summary
+    result_label = viewer._result_label.text()
+
+    viewer._scheme_actions[SubdivisionScheme.BUTTERFLY].trigger()
+    viewer._iteration_actions[3].trigger()
+
+    assert viewer._mesh is current_mesh
+    assert viewer._last_subdivision_summary == result_summary
+    assert viewer._result_label.text() == result_label
+    assert "Subdivide mesh" in viewer._scheme_actions[
+        SubdivisionScheme.BUTTERFLY
+    ].toolTip()
+    assert "press N" in viewer._iteration_actions[3].toolTip()
+    assert "press N" in viewer.statusBar().currentMessage()
+
+
 @pytest.mark.parametrize("iteration_count", [1, 2, 3, 4])
 def test_subdivision_applies_selected_number_of_passes(viewer, iteration_count):
     viewer.load_mesh_path("tests/fixtures/tetrahedron_ascii.stl")
@@ -78,13 +98,63 @@ def test_subdivision_applies_selected_number_of_passes(viewer, iteration_count):
     assert len(viewer._mesh.faces) == initial_face_count * 4**iteration_count
     assert viewer._applied_iterations == iteration_count
     assert f"applied {iteration_count}" in viewer.statusBar().currentMessage()
+    assert viewer._last_subdivision_summary == (
+        f"Loop subdivision: applied {iteration_count} "
+        f"{'pass' if iteration_count == 1 else 'passes'}; faces "
+        f"{initial_face_count} -> {initial_face_count * 4**iteration_count}."
+    )
+    assert viewer._result_label.text() == viewer._last_subdivision_summary
+
+
+def test_subdivide_menu_action_applies_selected_scheme_and_iterations(viewer):
+    viewer.load_mesh_path("tests/fixtures/tetrahedron_ascii.stl")
+    initial_face_count = len(viewer._mesh.faces)
+    viewer._scheme_actions[SubdivisionScheme.BUTTERFLY].trigger()
+    viewer._iteration_actions[2].trigger()
+
+    viewer._subdivide_action.trigger()
+
+    assert viewer._mesh is not None
+    assert viewer._mesh.revision == 2
+    assert len(viewer._mesh.faces) == initial_face_count * 16
+    assert viewer._last_subdivision_summary == (
+        f"Butterfly subdivision: applied 2 passes; faces "
+        f"{initial_face_count} -> {initial_face_count * 16}."
+    )
+
+
+def test_loop_and_butterfly_can_be_compared_from_reset_baseline(viewer):
+    viewer.load_mesh_path("tests/fixtures/tetrahedron_ascii.stl")
+    initial_face_count = len(viewer._mesh.faces)
+
+    viewer._scheme_actions[SubdivisionScheme.LOOP].trigger()
+    viewer.subdivide_selected()
+    loop_summary = viewer._last_subdivision_summary
+    assert loop_summary.startswith("Loop subdivision:")
+    assert f"faces {initial_face_count} -> {initial_face_count * 4}." in loop_summary
+
+    viewer.reset_mesh()
+    assert viewer._last_subdivision_summary is None
+
+    viewer._scheme_actions[SubdivisionScheme.BUTTERFLY].trigger()
+    viewer.subdivide_selected()
+    butterfly_summary = viewer._last_subdivision_summary
+
+    assert butterfly_summary.startswith("Butterfly subdivision:")
+    assert (
+        f"faces {initial_face_count} -> {initial_face_count * 4}."
+        in butterfly_summary
+    )
 
 
 def test_failed_multi_pass_subdivision_keeps_displayed_mesh_unchanged(
     viewer, monkeypatch
 ):
     viewer.load_mesh_path("tests/fixtures/tetrahedron_ascii.stl")
+    viewer.subdivide_selected()
     original_mesh = viewer._mesh
+    last_summary = viewer._last_subdivision_summary
+    result_label = viewer._result_label.text()
     viewer._iteration_actions[2].trigger()
     subdivide = viewer_module.subdivide_mesh
     calls = 0
@@ -106,7 +176,9 @@ def test_failed_multi_pass_subdivision_keeps_displayed_mesh_unchanged(
 
     assert calls == 2
     assert viewer._mesh is original_mesh
-    assert viewer._applied_iterations == 0
+    assert viewer._applied_iterations == 1
+    assert viewer._last_subdivision_summary == last_summary
+    assert viewer._result_label.text() == result_label
     assert "Subdivision failed" in viewer.statusBar().currentMessage()
 
 
@@ -144,6 +216,8 @@ def test_reset_restores_loaded_mesh_and_preserves_selections(viewer):
 
     assert viewer._mesh is loaded_mesh
     assert viewer._applied_iterations == 0
+    assert viewer._last_subdivision_summary is None
+    assert "no subdivision applied" in viewer._result_label.text()
     assert viewer._iteration_count == 3
     assert viewer._scheme is SubdivisionScheme.BUTTERFLY
     assert "0 subdivision iterations" in viewer.statusBar().currentMessage()
@@ -178,8 +252,16 @@ def test_reset_when_already_loaded_is_a_no_op(viewer):
 
 def test_successful_load_replaces_reset_target(viewer):
     viewer.load_mesh_path("tests/fixtures/tetrahedron_ascii.stl")
+    viewer.subdivide_selected()
+    assert viewer._last_subdivision_summary is not None
+
     viewer.load_mesh_path("tests/fixtures/triangle_mesh.obj")
     loaded_mesh = viewer._mesh
+    assert viewer._last_subdivision_summary is None
+    assert viewer._result_label.text() == (
+        f"Loaded mesh: {len(loaded_mesh.faces)} faces; no subdivision applied."
+    )
+
     viewer._iteration_actions[2].trigger()
     viewer.subdivide_selected()
 
@@ -187,6 +269,7 @@ def test_successful_load_replaces_reset_target(viewer):
 
     assert viewer._mesh is loaded_mesh
     assert viewer._applied_iterations == 0
+    assert viewer._last_subdivision_summary is None
 
 
 def test_subdivision_and_reset_without_mesh_report_required_action(viewer):
