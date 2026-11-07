@@ -35,6 +35,9 @@ class MeshViewerWindow(QMainWindow):
         self.resize(1000, 700)
 
         self._mesh: HalfEdgeMesh | None = None
+        self._loaded_mesh: HalfEdgeMesh | None = None
+        self._iteration_count = 1
+        self._applied_iterations = 0
         self._scheme = SubdivisionScheme.LOOP
         self._display_mode = DisplayMode.FLAT_SHADED
 
@@ -42,7 +45,8 @@ class MeshViewerWindow(QMainWindow):
         self.setCentralWidget(self.plotter)
         self._create_menus()
         self.statusBar().showMessage(
-            "Open an STL or OBJ file. N: subdivide; W: change display mode."
+            "Open an STL or OBJ file. N: subdivide; W: change display mode. "
+            "Each iteration is one complete pass over the mesh."
         )
 
     def _create_menus(self) -> None:
@@ -74,11 +78,39 @@ class MeshViewerWindow(QMainWindow):
             scheme_menu.addAction(action)
             self._scheme_actions[scheme] = action
 
-        iterate_action = QAction("&Subdivide once", self)
+        iteration_menu = mesh_menu.addMenu("&Subdivision iterations")
+        iteration_group = QActionGroup(self)
+        iteration_group.setExclusive(True)
+        self._iteration_actions: dict[int, QAction] = {}
+        for count in range(1, 5):
+            unit = "iteration" if count == 1 else "iterations"
+            action = QAction(f"{count} {unit}", self, checkable=True)
+            action.setChecked(count == self._iteration_count)
+            action.triggered.connect(
+                lambda checked=False, selected=count: self._select_iteration_count(
+                    selected
+                )
+            )
+            iteration_group.addAction(action)
+            iteration_menu.addAction(action)
+            self._iteration_actions[count] = action
+
+        iterate_action = QAction("&Subdivide mesh", self)
         iterate_action.setShortcut(QKeySequence("N"))
         iterate_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        iterate_action.triggered.connect(self.subdivide_once)
+        iterate_action.setToolTip(
+            "Apply the selected number of complete subdivision passes to the current mesh."
+        )
+        iterate_action.setStatusTip(iterate_action.toolTip())
+        iterate_action.triggered.connect(self.subdivide_selected)
         mesh_menu.addAction(iterate_action)
+
+        reset_action = QAction("&Reset to loaded mesh", self)
+        reset_action.setShortcut(QKeySequence("R"))
+        reset_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        reset_action.triggered.connect(self.reset_mesh)
+        mesh_menu.addAction(reset_action)
+        self._reset_action = reset_action
 
         display_menu = self.menuBar().addMenu("&Display")
         self._display_action = QAction("&Toggle wireframe / flat shading", self)
@@ -107,10 +139,13 @@ class MeshViewerWindow(QMainWindow):
             return
 
         self._mesh = mesh
+        self._loaded_mesh = mesh
+        self._applied_iterations = 0
         self._display_mode = DisplayMode.FLAT_SHADED
         self._show_mesh(reset_camera=True)
         self.statusBar().showMessage(
-            f"Loaded {Path(filename).name}. N: subdivide; W: change display mode."
+            f"Loaded {Path(filename).name}. N: subdivide; R: reset; "
+            "W: change display mode. Each iteration is one complete pass."
         )
 
     def _select_scheme(self, scheme: SubdivisionScheme) -> None:
@@ -118,22 +153,50 @@ class MeshViewerWindow(QMainWindow):
         self._scheme_actions[scheme].setChecked(True)
         self.statusBar().showMessage(f"Subdivision scheme: {scheme.value.title()}")
 
-    def subdivide_once(self) -> None:
+    def _select_iteration_count(self, count: int) -> None:
+        self._iteration_count = count
+        self._iteration_actions[count].setChecked(True)
+        self.statusBar().showMessage(
+            f"Next subdivision applies {count} complete "
+            f"{'iteration' if count == 1 else 'iterations'}."
+        )
+
+    def subdivide_selected(self) -> None:
         if self._mesh is None:
             self.statusBar().showMessage("Load a valid mesh before subdividing.")
             return
         try:
-            refined = subdivide_mesh(self._mesh, self._scheme)
+            refined = self._mesh
+            for _ in range(self._iteration_count):
+                refined = subdivide_mesh(refined, self._scheme)
         except (ValueError, RuntimeError) as exc:
             self.statusBar().showMessage(f"Subdivision failed: {exc}")
             QMessageBox.warning(self, "Subdivision failed", str(exc))
             return
 
         self._mesh = refined
+        self._applied_iterations += self._iteration_count
         self._show_mesh(reset_camera=False)
         self.statusBar().showMessage(
-            f"{self._scheme.value.title()} subdivision: iteration "
-            f"{self._mesh.revision}."
+            f"{self._scheme.value.title()} subdivision: applied "
+            f"{self._iteration_count} "
+            f"{'iteration' if self._iteration_count == 1 else 'iterations'} "
+            f"({self._applied_iterations} total)."
+        )
+
+    def reset_mesh(self) -> None:
+        if self._loaded_mesh is None:
+            self.statusBar().showMessage("Load a valid mesh before resetting.")
+            return
+        if self._applied_iterations == 0:
+            self.statusBar().showMessage("Mesh is already at its loaded state.")
+            return
+
+        self._mesh = self._loaded_mesh
+        self._applied_iterations = 0
+        self._show_mesh(reset_camera=False)
+        self.statusBar().showMessage(
+            "Mesh reset to loaded state; 0 subdivision iterations applied."
         )
 
     def toggle_display_mode(self) -> None:

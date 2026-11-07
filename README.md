@@ -28,8 +28,13 @@ csomagokat. Ezután a második elindítja a programot.
 2. Az egér húzásával forgasd a modellt, az egérgörgővel nagyíts vagy kicsinyíts.
 3. A **Mesh → Subdivision scheme** menüben válaszd ki a **Loop** vagy
    **Butterfly** módszert.
-4. Nyomd meg az `N` billentyűt egy finomítási iteráció elindításához.
-5. Nyomd meg a `W` billentyűt a flat shading és a dróthálós nézet közötti
+4. A **Mesh → Subdivision iterations** menüben válassz 1–4 iterációt. Az `N`
+   billentyű elindítja a kiválasztott számú finomítási menetet; egy iteráció
+   a teljes aktuális hálón végigfutó subdivision műveletet jelent.
+5. Nyomd meg az `R` billentyűt a háló legutóbbi betöltött állapotának
+   visszaállításához. Ez a már elvégzett iterációkat nullázza, a kiválasztott
+   iterációszámot és subdivision módszert megtartja.
+6. Nyomd meg a `W` billentyűt a flat shading és a dróthálós nézet közötti
    váltáshoz.
 
 Ha a fájl nem olvasható vagy a háló topológiája nem támogatott, a program
