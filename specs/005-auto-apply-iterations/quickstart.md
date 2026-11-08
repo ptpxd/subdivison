@@ -33,14 +33,14 @@ Expected results:
   count; they do not require a separate `N` action.
 - Changing Loop/Butterfly with a positive count selected immediately
   recomputes that total from the loaded mesh using the newly selected scheme.
-- Selecting zero does not change the current mesh, applied count, or last
-  successful result summary, and does not behave as reset.
+- Selecting zero restores the loaded mesh, sets applied iterations to zero,
+  and clears the subdivision-result summary.
 - Failed automatic computation preserves the last successful displayed mesh
   and result summary while reporting the failure.
-- `N` and the explicit **Subdivide mesh** menu action remain available to
-  reapply the current positive selection.
-- Reset restores the loaded mesh and zero applied iterations while preserving
-  the selected count and scheme.
+- There is no separate `N` or **Subdivide mesh** action; positive iteration
+  and scheme changes apply automatically.
+- Reset restores the loaded mesh and sets selected and applied iterations to
+  zero while preserving the selected scheme.
 
 ## Manual acceptance checks
 
@@ -57,10 +57,10 @@ Expected results:
    displayed result immediately changes to the selected count computed from
    the loaded mesh with Butterfly.
 7. While displaying a subdivided mesh, set the slider to zero. Confirm the
-   displayed mesh, applied count, and last successful result summary remain
-   unchanged; zero does not reset the mesh.
+   loaded geometry and zero applied count are restored and subdivision-result
+   feedback is cleared.
 8. Use **Mesh → Reset to loaded mesh** or press `R`. Confirm the loaded
-   geometry and zero applied count are restored and the selected count is
-   preserved.
-9. Confirm `N` still reapplies the current positive selection and that
-   subdivision failures leave the last successful displayed result intact.
+   geometry and both selected and applied counts are zero, with the selected
+   scheme preserved.
+9. Confirm there is no `N` or **Subdivide mesh** action and that subdivision
+   failures leave the last successful displayed result intact.

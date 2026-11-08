@@ -96,7 +96,7 @@ class MeshViewerWindow(QMainWindow):
         self._result_label.setObjectName("subdivisionResult")
         self.statusBar().addPermanentWidget(self._result_label)
         self.statusBar().showMessage(
-            "Open an STL or OBJ file. +/-: change iterations; N: subdivide; "
+            "Open an STL or OBJ file. +/-: change iterations; "
             "W: change display mode. Each iteration refines the entire mesh once."
         )
 
@@ -111,18 +111,18 @@ class MeshViewerWindow(QMainWindow):
         self.iteration_label.setText(f"Selected iterations: {self._iteration_count}")
 
     def _update_iteration_count(self, value: int) -> None:
-        """Update the selected count and immediately apply positive selections."""
+        """Update the selected count and apply the corresponding mesh state."""
         self._iteration_count = value
         self.iteration_label.setText(f"Selected iterations: {value}")
         if value == 0:
-            if self._mesh is None:
-                message = "Selected 0 iterations; load a valid mesh before subdivision."
-            else:
-                message = (
-                    "Selected 0 iterations; the displayed mesh remains unchanged."
+            if self._loaded_mesh is None:
+                self.statusBar().showMessage(
+                    "Selected 0 iterations; load a valid mesh first."
                 )
+                return
+            self._restore_loaded_mesh()
             self.statusBar().showMessage(
-                message
+                "Mesh restored to loaded state; 0 subdivision iterations applied."
             )
             return
         self.subdivide_selected()
@@ -151,8 +151,8 @@ class MeshViewerWindow(QMainWindow):
             action = QAction(label, self, checkable=True)
             action.setChecked(scheme is self._scheme)
             action.setToolTip(
-                "Applies the selected positive iteration count with this method. "
-                "Press N to reapply it."
+                "Immediately applies the selected positive iteration count "
+                "with this method."
             )
             action.setStatusTip(action.toolTip())
             action.triggered.connect(
@@ -175,12 +175,6 @@ class MeshViewerWindow(QMainWindow):
         self._display_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         self._display_action.triggered.connect(self.toggle_display_mode)
         display_menu.addAction(self._display_action)
-
-        self._subdivide_action = QAction("&Subdivide mesh", self)
-        self._subdivide_action.setShortcut(QKeySequence("N"))
-        self._subdivide_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        self._subdivide_action.triggered.connect(self.subdivide_selected)
-        mesh_menu.addAction(self._subdivide_action)
 
         increase_iteration_action = QAction("Increase iterations (+)", self)
         increase_iteration_action.setShortcut(QKeySequence("+"))
@@ -225,6 +219,8 @@ class MeshViewerWindow(QMainWindow):
 
         self._mesh = mesh
         self._loaded_mesh = mesh
+        self._iteration_count = 0
+        self.iteration_slider.setValue(0)
         self._applied_iterations = 0
         self._applied_scheme = None
         self._last_subdivision_summary = None
@@ -235,8 +231,8 @@ class MeshViewerWindow(QMainWindow):
         self._show_mesh(reset_camera=True)
         self._update_info_panel()  # Update the info panel with the new mesh data
         self.statusBar().showMessage(
-            f"Loaded {Path(filename).name}. +/-: change and apply iterations; "
-            "N: reapply; R: reset; W: change display mode. "
+            f"Loaded {Path(filename).name}. +/-: change iterations; "
+            "R: reset; W: change display mode. "
             "Each iteration refines the entire mesh once."
         )
 
@@ -319,10 +315,27 @@ class MeshViewerWindow(QMainWindow):
         if self._loaded_mesh is None:
             self.statusBar().showMessage("Load a valid mesh before resetting.")
             return
-        if self._applied_iterations == 0:
+        if (
+            self._mesh is self._loaded_mesh
+            and self._iteration_count == 0
+            and self._applied_iterations == 0
+        ):
             self.statusBar().showMessage("Mesh is already at its loaded state.")
             return
 
+        if self.iteration_slider.value() != 0:
+            self.iteration_slider.setValue(0)
+        else:
+            self._iteration_count = 0
+            self._restore_loaded_mesh()
+
+        self.statusBar().showMessage(
+            "Mesh reset to loaded state; 0 subdivision iterations applied."
+        )
+
+    def _restore_loaded_mesh(self) -> None:
+        if self._loaded_mesh is None:
+            return
         self._mesh = self._loaded_mesh
         self._applied_iterations = 0
         self._applied_scheme = None
@@ -333,9 +346,6 @@ class MeshViewerWindow(QMainWindow):
         )
         self._show_mesh(reset_camera=False)
         self._update_info_panel()
-        self.statusBar().showMessage(
-            "Mesh reset to loaded state; 0 subdivision iterations applied."
-        )
 
     def toggle_display_mode(self) -> None:
         if self._display_mode is DisplayMode.FLAT_SHADED:

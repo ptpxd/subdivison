@@ -33,21 +33,19 @@ csomagokat. Ezután a második elindítja a programot.
 4. A jobb oldali **Selected iterations** csúszka 0-ról indul, és 0–4 között
    választhatsz. Az 1–4 közötti értékek kiválasztásakor a háló automatikusan
    frissül; a `+` és `-` billentyűkkel is azonnal alkalmazhatod a módosított
-   iterációszámot. A 0 kiválasztása nem változtatja meg a jelenlegi hálót, és
-   nem helyettesíti a visszaállítást. Egy iteráció a teljes hálót egyszer
-   finomítja. Az `N` billentyű vagy a **Mesh → Subdivide mesh** művelet
-   továbbra is használható az aktuális pozitív érték újbóli alkalmazására.
+   iterációszámot. A 0 kiválasztása visszaállítja a betöltött eredeti hálót.
+   Egy iteráció a teljes hálót egyszer finomítja.
 5. Nyomd meg az `R` billentyűt a háló legutóbbi betöltött állapotának
    visszaállításához. Ez törli az előző művelet eredmény-összegzését, nullázza
-   az elvégzett iterációkat, és megtartja a kiválasztott iterációszámot és
-   subdivision módszert.
+   a kiválasztott és alkalmazott iterációszámot, és megtartja a subdivision
+   módszert.
 6. Nyomd meg a `W` billentyűt a flat shading és a dróthálós nézet közötti
    váltáshoz.
 
 A sikeres finomítás összegzése megmutatja a választott módszert, az alkalmazott
 iterációk számát, valamint a háló oldallapjainak számát a művelet előtt és után. Az
 összegzés külön mezőben marad látható akkor is, ha másik beállítást választasz;
-új háló betöltése vagy visszaállítása törli, mert új alapállapotot ad meg.
+új háló betöltése, a nulla iteráció kiválasztása vagy visszaállítás törli.
 
 Ha a fájl nem olvasható vagy a háló topológiája nem támogatott, a program
 hibaüzenetet jelenít meg, és nyitva marad.

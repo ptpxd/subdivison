@@ -4,7 +4,8 @@
 
 **Created**: 2026-11-08
 
-**Status**: Implemented
+**Status**: Implemented; zero-selection and manual-apply behavior superseded by
+`006-zero-iterations-restore-loaded-mesh`
 
 **Input**: User description: "When I change the iteration count, I should not have to press N; the mesh should change automatically."
 
@@ -133,6 +134,10 @@ the loaded mesh using the newly selected scheme without pressing `N`.
   displayed result.
 
 ## Assumptions
+
+The zero-selection and optional manual-apply behavior in this historical
+feature was superseded by
+[006-zero-iterations-restore-loaded-mesh](../006-zero-iterations-restore-loaded-mesh/spec.md).
 
 - This feature supersedes the manual-apply interaction in
   `004-iteration-slider-zero-default` for positive iteration and scheme
