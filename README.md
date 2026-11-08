@@ -27,12 +27,16 @@ csomagokat. Ezután a második elindítja a programot.
 1. A **File → Open mesh...** menüpontban válassz egy `.stl` vagy `.obj` fájlt.
 2. Az egér húzásával forgasd a modellt, az egérgörgővel nagyíts vagy kicsinyíts.
 3. A **Mesh → Subdivision scheme** menüben válaszd ki a **Loop** vagy
-   **Butterfly** módszert. A módszer kiválasztása csak a következő művelet
-   beállítása; önmagában nem módosítja a hálót.
-4. A **Mesh → Subdivision iterations** menüben válassz 1–4 iterációt. Ez is
-   csak beállítás: a finomítást a **Mesh → Subdivide mesh** művelet vagy az
-   `N` billentyű indítja el. Egy iteráció a teljes aktuális hálón végigfutó
-   subdivision menetet jelent.
+   **Butterfly** módszert. A módszer kiválasztása nem módosítja az aktuális
+   hálót, és nem törli a kiválasztott iterációszámot. A következő alkalmazás az
+   új módszerrel, a betöltött alapmeshből számolja újra az eredményt.
+4. A jobb oldali **Selected iterations** csúszka 0-ról indul, és 0–4 között
+   választhatsz. A 0 azt jelenti, hogy nincs kiválasztva iteráció; az 1–4 a
+   következő felosztás iterációinak számát adja meg. A `+` és `-` billentyűkkel
+   egyesével növelheted vagy csökkentheted a számot. A csúszka és a billentyűk
+   csak a kijelölést változtatják; a **Mesh → Subdivide mesh** művelet vagy az
+   `N` billentyű alkalmazza a kiválasztott iterációszámot. Egy iteráció a teljes
+   aktuális hálót egyszer finomítja.
 5. Nyomd meg az `R` billentyűt a háló legutóbbi betöltött állapotának
    visszaállításához. Ez törli az előző művelet eredmény-összegzését, nullázza
    az elvégzett iterációkat, és megtartja a kiválasztott iterációszámot és
@@ -40,8 +44,8 @@ csomagokat. Ezután a második elindítja a programot.
 6. Nyomd meg a `W` billentyűt a flat shading és a dróthálós nézet közötti
    váltáshoz.
 
-A sikeres finomítás összegzése megmutatja a választott módszert, a menetek
-számát, valamint a háló oldallapjainak számát a művelet előtt és után. Az
+A sikeres finomítás összegzése megmutatja a választott módszert, az alkalmazott
+iterációk számát, valamint a háló oldallapjainak számát a művelet előtt és után. Az
 összegzés külön mezőben marad látható akkor is, ha másik beállítást választasz;
 új háló betöltése vagy visszaállítása törli, mert új alapállapotot ad meg.
 

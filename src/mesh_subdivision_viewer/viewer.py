@@ -57,9 +57,10 @@ class MeshViewerWindow(QMainWindow):
 
         self._mesh: HalfEdgeMesh | None = None
         self._loaded_mesh: HalfEdgeMesh | None = None
-        self._iteration_count = 1
+        self._iteration_count = 0
         self._applied_iterations = 0
         self._scheme = SubdivisionScheme.LOOP
+        self._applied_scheme: SubdivisionScheme | None = None
         self._last_subdivision_summary: str | None = None
         self._display_mode = DisplayMode.FLAT_SHADED
 
@@ -70,9 +71,9 @@ class MeshViewerWindow(QMainWindow):
         self.info_layout = QVBoxLayout(self.info_panel)
         self.vertex_label = QLabel("Vertices: 0", self.info_panel)
         self.face_label = QLabel("Triangles: 0", self.info_panel)
-        self.iteration_label = QLabel("Iteration: 0", self.info_panel)  # Label for applied iterations
+        self.iteration_label = QLabel("Selected iterations: 0", self.info_panel)
         self.iteration_slider = QSlider(Qt.Orientation.Horizontal, self.info_panel)  # Add slider
-        self.iteration_slider.setRange(0, 4)  # Limit to 1-5 iterations
+        self.iteration_slider.setRange(0, 4)
         self.iteration_slider.setValue(self._iteration_count)
         self.iteration_slider.valueChanged.connect(self._update_iteration_count)  # Connect slider to update method
 
@@ -95,29 +96,32 @@ class MeshViewerWindow(QMainWindow):
         self._result_label.setObjectName("subdivisionResult")
         self.statusBar().addPermanentWidget(self._result_label)
         self.statusBar().showMessage(
-            "Open an STL or OBJ file. N: subdivide; W: change display mode. "
-            "Each iteration is one complete pass over the mesh."
+            "Open an STL or OBJ file. +/-: change iterations; N: subdivide; "
+            "W: change display mode. Each iteration refines the entire mesh once."
         )
 
     def _update_info_panel(self) -> None:
-        """Update the vertex, triangle counts, and iteration count in the info panel."""
+        """Update mesh statistics while keeping the selected iteration count visible."""
         if self._mesh is None:
             self.vertex_label.setText("Vertices: 0")
             self.face_label.setText("Triangles: 0")
-            self.iteration_label.setText("Iteration: 0")  # Reset iteration count
         else:
             self.vertex_label.setText(f"Vertices: {len(self._mesh.vertices)}")
             self.face_label.setText(f"Triangles: {len(self._mesh.faces)}")
-            self.iteration_label.setText(f"Iteration: {self._applied_iterations}")  # Update applied iterations
+        self.iteration_label.setText(f"Selected iterations: {self._iteration_count}")
 
     def _update_iteration_count(self, value: int) -> None:
-        """Update the iteration count based on the slider value and apply subdivision."""
+        """Update the selected iteration count without modifying the mesh."""
         self._iteration_count = value
-        self.iteration_label.setText(f"Iteration: {value}")  # Update the label dynamically
-        self.statusBar().showMessage(f"Next subdivision applies {value} iteration(s).")
-
-        # Apply subdivision to update the mesh
-        self.subdivide_selected()
+        self.iteration_label.setText(f"Selected iterations: {value}")
+        if value == 0:
+            message = "Select 1 to 4 iterations, then press N to subdivide."
+        else:
+            message = (
+                f"Selected {value} subdivision "
+                f"{'iteration' if value == 1 else 'iterations'}; press N to apply."
+            )
+        self.statusBar().showMessage(message)
 
     def _create_menus(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
@@ -168,31 +172,33 @@ class MeshViewerWindow(QMainWindow):
         self._display_action.triggered.connect(self.toggle_display_mode)
         display_menu.addAction(self._display_action)
 
-        next_iteration_action = QAction("&Next iteration", self)
-        next_iteration_action.setShortcut(QKeySequence("N"))
-        next_iteration_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        next_iteration_action.triggered.connect(self._increment_iteration)
-        mesh_menu.addAction(next_iteration_action)
+        self._subdivide_action = QAction("&Subdivide mesh", self)
+        self._subdivide_action.setShortcut(QKeySequence("N"))
+        self._subdivide_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        self._subdivide_action.triggered.connect(self.subdivide_selected)
+        mesh_menu.addAction(self._subdivide_action)
 
-        previous_iteration_action = QAction("&Previous iteration", self)
-        previous_iteration_action.setShortcut(QKeySequence("M"))
-        previous_iteration_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        previous_iteration_action.triggered.connect(self._decrement_iteration)
-        mesh_menu.addAction(previous_iteration_action)
+        increase_iteration_action = QAction("Increase iterations (+)", self)
+        increase_iteration_action.setShortcut(QKeySequence("+"))
+        increase_iteration_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        increase_iteration_action.triggered.connect(self._increment_iteration)
+        mesh_menu.addAction(increase_iteration_action)
+
+        decrease_iteration_action = QAction("Decrease iterations (-)", self)
+        decrease_iteration_action.setShortcut(QKeySequence("-"))
+        decrease_iteration_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        decrease_iteration_action.triggered.connect(self._decrement_iteration)
+        mesh_menu.addAction(decrease_iteration_action)
 
     def _increment_iteration(self) -> None:
-        """Increase the iteration count and apply subdivision."""
-        if self._iteration_count < 4:  # Ensure the count does not exceed the maximum
-            self._iteration_count += 1
-            self.iteration_slider.setValue(self._iteration_count)  # Update the slider
-            self.subdivide_selected()
+        """Increase the selected iteration count without subdividing."""
+        if self._iteration_count < 4:
+            self.iteration_slider.setValue(self._iteration_count + 1)
 
     def _decrement_iteration(self) -> None:
-        """Decrease the iteration count and reset subdivision."""
-        if self._iteration_count > 0:  # Ensure the count does not go below zero
-            self._iteration_count -= 1
-            self.iteration_slider.setValue(self._iteration_count)  # Update the slider
-            self.subdivide_selected()
+        """Decrease the selected iteration count without subdividing."""
+        if self._iteration_count > 0:
+            self.iteration_slider.setValue(self._iteration_count - 1)
 
     def open_mesh(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(
@@ -216,6 +222,7 @@ class MeshViewerWindow(QMainWindow):
         self._mesh = mesh
         self._loaded_mesh = mesh
         self._applied_iterations = 0
+        self._applied_scheme = None
         self._last_subdivision_summary = None
         self._result_label.setText(
             f"Loaded mesh: {len(mesh.faces)} faces; no subdivision applied."
@@ -224,71 +231,56 @@ class MeshViewerWindow(QMainWindow):
         self._show_mesh(reset_camera=True)
         self._update_info_panel()  # Update the info panel with the new mesh data
         self.statusBar().showMessage(
-            f"Loaded {Path(filename).name}. N: subdivide; R: reset; "
-            "W: change display mode. Each iteration is one complete pass."
+            f"Loaded {Path(filename).name}. +/-: change iterations; "
+            "N: subdivide; R: reset; W: change display mode. "
+            "Each iteration refines the entire mesh once."
         )
 
     def _select_scheme(self, scheme: SubdivisionScheme) -> None:
         self._scheme = scheme
         self._scheme_actions[scheme].setChecked(True)
         self.statusBar().showMessage(
-            f"Selected {scheme.value.title()}. Choose Subdivide mesh or press N "
-            "to apply it."
-        )
-
-    def _select_iteration_count(self, count: int) -> None:
-        self._iteration_count = count
-        self._iteration_actions[count].setChecked(True)
-        self.statusBar().showMessage(
-            f"Selected {count} complete "
-            f"{'iteration' if count == 1 else 'iterations'}; choose Subdivide "
-            "mesh or press N to apply."
+            f"Selected {scheme.value.title()}; {self._iteration_count} "
+            f"{'iteration' if self._iteration_count == 1 else 'iterations'} "
+            "remain selected. Press N to apply."
         )
 
     def subdivide_selected(self) -> None:
-        if self._mesh is None:
+        if self._mesh is None or self._loaded_mesh is None:
             self.statusBar().showMessage("Load a valid mesh before subdividing.")
             return
 
-        # Ensure the applied iterations do not exceed the maximum
-        if self._applied_iterations >= 4 and self._iteration_count > self._applied_iterations:
-            self.statusBar().showMessage("Maximum iterations (4) already applied.")
+        if self._iteration_count == 0:
+            self.statusBar().showMessage(
+                "No subdivision applied: select 1 to 4 iterations first."
+            )
             return
 
-        # Handle reverse iterations
-        if self._iteration_count < self._applied_iterations:
-            self._mesh = self._loaded_mesh
-
-            try:
-                for _ in range(self._iteration_count):
-                    self._mesh = subdivide_mesh(
-                        self._mesh,
-                        self._scheme
-                    )
-
-            except (ValueError, RuntimeError) as exc:
-                self.statusBar().showMessage(
-                    f"Subdivision failed: {exc}"
-                )
-                QMessageBox.warning(
-                    self,
-                    "Subdivision failed",
-                    str(exc)
-                )
-                return
-
-            self._applied_iterations = self._iteration_count
-
-            self._show_mesh(reset_camera=False)
-            self._update_info_panel()
-
+        scheme_changed = (
+            self._applied_iterations > 0 and self._applied_scheme is not self._scheme
+        )
+        if (
+            self._iteration_count == self._applied_iterations
+            and not scheme_changed
+        ):
+            self.statusBar().showMessage(
+                f"{self._scheme.value.title()} subdivision: "
+                f"{self._applied_iterations} "
+                f"{'iteration' if self._applied_iterations == 1 else 'iterations'} "
+                "already applied."
+            )
             return
 
-        # Handle forward iterations
-        remaining_iterations = self._iteration_count - self._applied_iterations
-        try:
+        face_count_before = len(self._mesh.faces)
+        if scheme_changed or self._iteration_count < self._applied_iterations:
+            refined = self._loaded_mesh
+            iterations_to_apply = self._iteration_count
+        else:
             refined = self._mesh
-            for _ in range(remaining_iterations):
+            iterations_to_apply = self._iteration_count - self._applied_iterations
+
+        try:
+            for _ in range(iterations_to_apply):
                 refined = subdivide_mesh(refined, self._scheme)
         except (ValueError, RuntimeError) as exc:
             self.statusBar().showMessage(f"Subdivision failed: {exc}")
@@ -297,13 +289,19 @@ class MeshViewerWindow(QMainWindow):
 
         self._mesh = refined
         self._applied_iterations = self._iteration_count
+        self._applied_scheme = self._scheme
         self._show_mesh(reset_camera=False)
         self._update_info_panel()
-        self.statusBar().showMessage(
+        face_count_after = len(self._mesh.faces)
+        self._last_subdivision_summary = (
             f"{self._scheme.value.title()} subdivision: applied "
-            f"{remaining_iterations} "
-            f"{'iteration' if remaining_iterations == 1 else 'iterations'} "
-            f"({self._applied_iterations} total)."
+            f"{self._applied_iterations} "
+            f"{'iteration' if self._applied_iterations == 1 else 'iterations'}; faces "
+            f"{face_count_before} -> {face_count_after}."
+        )
+        self._result_label.setText(self._last_subdivision_summary)
+        self.statusBar().showMessage(
+            self._last_subdivision_summary
         )
     def reset_mesh(self) -> None:
         if self._loaded_mesh is None:
@@ -315,12 +313,14 @@ class MeshViewerWindow(QMainWindow):
 
         self._mesh = self._loaded_mesh
         self._applied_iterations = 0
+        self._applied_scheme = None
         self._last_subdivision_summary = None
         self._result_label.setText(
             f"Loaded mesh: {len(self._loaded_mesh.faces)} faces; "
             "no subdivision applied."
         )
         self._show_mesh(reset_camera=False)
+        self._update_info_panel()
         self.statusBar().showMessage(
             "Mesh reset to loaded state; 0 subdivision iterations applied."
         )
