@@ -27,16 +27,16 @@ csomagokat. Ezután a második elindítja a programot.
 1. A **File → Open mesh...** menüpontban válassz egy `.stl` vagy `.obj` fájlt.
 2. Az egér húzásával forgasd a modellt, az egérgörgővel nagyíts vagy kicsinyíts.
 3. A **Mesh → Subdivision scheme** menüben válaszd ki a **Loop** vagy
-   **Butterfly** módszert. A módszer kiválasztása nem módosítja az aktuális
-   hálót, és nem törli a kiválasztott iterációszámot. A következő alkalmazás az
-   új módszerrel, a betöltött alapmeshből számolja újra az eredményt.
+   **Butterfly** módszert. Pozitív iterációszámnál a módszer kiválasztása
+   azonnal újraszámolja a hálót a betöltött alapmeshből, az aktuális
+   iterációszámmal.
 4. A jobb oldali **Selected iterations** csúszka 0-ról indul, és 0–4 között
-   választhatsz. A 0 azt jelenti, hogy nincs kiválasztva iteráció; az 1–4 a
-   következő felosztás iterációinak számát adja meg. A `+` és `-` billentyűkkel
-   egyesével növelheted vagy csökkentheted a számot. A csúszka és a billentyűk
-   csak a kijelölést változtatják; a **Mesh → Subdivide mesh** művelet vagy az
-   `N` billentyű alkalmazza a kiválasztott iterációszámot. Egy iteráció a teljes
-   aktuális hálót egyszer finomítja.
+   választhatsz. Az 1–4 közötti értékek kiválasztásakor a háló automatikusan
+   frissül; a `+` és `-` billentyűkkel is azonnal alkalmazhatod a módosított
+   iterációszámot. A 0 kiválasztása nem változtatja meg a jelenlegi hálót, és
+   nem helyettesíti a visszaállítást. Egy iteráció a teljes hálót egyszer
+   finomítja. Az `N` billentyű vagy a **Mesh → Subdivide mesh** művelet
+   továbbra is használható az aktuális pozitív érték újbóli alkalmazására.
 5. Nyomd meg az `R` billentyűt a háló legutóbbi betöltött állapotának
    visszaállításához. Ez törli az előző művelet eredmény-összegzését, nullázza
    az elvégzett iterációkat, és megtartja a kiválasztott iterációszámot és

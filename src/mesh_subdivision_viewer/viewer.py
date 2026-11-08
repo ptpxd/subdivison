@@ -111,17 +111,21 @@ class MeshViewerWindow(QMainWindow):
         self.iteration_label.setText(f"Selected iterations: {self._iteration_count}")
 
     def _update_iteration_count(self, value: int) -> None:
-        """Update the selected iteration count without modifying the mesh."""
+        """Update the selected count and immediately apply positive selections."""
         self._iteration_count = value
         self.iteration_label.setText(f"Selected iterations: {value}")
         if value == 0:
-            message = "Select 1 to 4 iterations, then press N to subdivide."
-        else:
-            message = (
-                f"Selected {value} subdivision "
-                f"{'iteration' if value == 1 else 'iterations'}; press N to apply."
+            if self._mesh is None:
+                message = "Selected 0 iterations; load a valid mesh before subdivision."
+            else:
+                message = (
+                    "Selected 0 iterations; the displayed mesh remains unchanged."
+                )
+            self.statusBar().showMessage(
+                message
             )
-        self.statusBar().showMessage(message)
+            return
+        self.subdivide_selected()
 
     def _create_menus(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
@@ -147,8 +151,8 @@ class MeshViewerWindow(QMainWindow):
             action = QAction(label, self, checkable=True)
             action.setChecked(scheme is self._scheme)
             action.setToolTip(
-                "Selects the method for the next operation; choose "
-                "Subdivide mesh or press N to apply it."
+                "Applies the selected positive iteration count with this method. "
+                "Press N to reapply it."
             )
             action.setStatusTip(action.toolTip())
             action.triggered.connect(
@@ -191,12 +195,12 @@ class MeshViewerWindow(QMainWindow):
         mesh_menu.addAction(decrease_iteration_action)
 
     def _increment_iteration(self) -> None:
-        """Increase the selected iteration count without subdividing."""
+        """Increase the selected iteration count."""
         if self._iteration_count < 4:
             self.iteration_slider.setValue(self._iteration_count + 1)
 
     def _decrement_iteration(self) -> None:
-        """Decrease the selected iteration count without subdividing."""
+        """Decrease the selected iteration count."""
         if self._iteration_count > 0:
             self.iteration_slider.setValue(self._iteration_count - 1)
 
@@ -231,18 +235,26 @@ class MeshViewerWindow(QMainWindow):
         self._show_mesh(reset_camera=True)
         self._update_info_panel()  # Update the info panel with the new mesh data
         self.statusBar().showMessage(
-            f"Loaded {Path(filename).name}. +/-: change iterations; "
-            "N: subdivide; R: reset; W: change display mode. "
+            f"Loaded {Path(filename).name}. +/-: change and apply iterations; "
+            "N: reapply; R: reset; W: change display mode. "
             "Each iteration refines the entire mesh once."
         )
 
     def _select_scheme(self, scheme: SubdivisionScheme) -> None:
+        scheme_changed = self._scheme is not scheme
         self._scheme = scheme
         self._scheme_actions[scheme].setChecked(True)
+        if self._iteration_count > 0 and scheme_changed:
+            self.subdivide_selected()
+            return
+        if self._mesh is None:
+            self.statusBar().showMessage("Load a valid mesh before subdividing.")
+            return
         self.statusBar().showMessage(
-            f"Selected {scheme.value.title()}; {self._iteration_count} "
+            f"Selected {scheme.value.title()}; "
+            f"{self._iteration_count} "
             f"{'iteration' if self._iteration_count == 1 else 'iterations'} "
-            "remain selected. Press N to apply."
+            "selected. The displayed mesh is unchanged."
         )
 
     def subdivide_selected(self) -> None:
