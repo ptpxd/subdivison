@@ -21,12 +21,31 @@ from .subdivision import SubdivisionScheme, subdivide_mesh
 class DisplayMode(str, Enum):
     FLAT_SHADED = "flat-shaded"
     WIREFRAME = "wireframe"
+    WIREFRAME_NO_BACK = "wireframe-no-back"
 
 
 def actor_options(mode: DisplayMode) -> dict[str, object]:
     if mode is DisplayMode.WIREFRAME:
-        return {"style": "wireframe", "smooth_shading": False}
-    return {"style": "surface", "smooth_shading": False}
+        return {
+            "style": "wireframe",
+            "color": "white",
+            "smooth_shading": False,
+        }
+
+    elif mode is DisplayMode.WIREFRAME_NO_BACK:
+        return {
+            "style": "surface",
+            "color": "white",
+            "show_edges": True,
+            "edge_color": "#1E1F22",
+            "lighting": False,
+            "smooth_shading": False,
+        }
+
+    return {
+        "style": "surface",
+        "smooth_shading": False,
+    }
 
 
 class MeshViewerWindow(QMainWindow):
@@ -137,6 +156,32 @@ class MeshViewerWindow(QMainWindow):
         self._display_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         self._display_action.triggered.connect(self.toggle_display_mode)
         display_menu.addAction(self._display_action)
+
+        next_iteration_action = QAction("&Next iteration", self)
+        next_iteration_action.setShortcut(QKeySequence("N"))
+        next_iteration_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        next_iteration_action.triggered.connect(self._increment_iteration)
+        mesh_menu.addAction(next_iteration_action)
+
+        previous_iteration_action = QAction("&Previous iteration", self)
+        previous_iteration_action.setShortcut(QKeySequence("M"))
+        previous_iteration_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        previous_iteration_action.triggered.connect(self._decrement_iteration)
+        mesh_menu.addAction(previous_iteration_action)
+
+    def _increment_iteration(self) -> None:
+        """Increase the iteration count and apply subdivision."""
+        if self._iteration_count < 4:  # Ensure the count does not exceed the maximum
+            self._iteration_count += 1
+            self.iteration_slider.setValue(self._iteration_count)  # Update the slider
+            self.subdivide_selected()
+
+    def _decrement_iteration(self) -> None:
+        """Decrease the iteration count and reset subdivision."""
+        if self._iteration_count > 0:  # Ensure the count does not go below zero
+            self._iteration_count -= 1
+            self.iteration_slider.setValue(self._iteration_count)  # Update the slider
+            self.subdivide_selected()
 
     def open_mesh(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(
@@ -259,6 +304,8 @@ class MeshViewerWindow(QMainWindow):
     def toggle_display_mode(self) -> None:
         if self._display_mode is DisplayMode.FLAT_SHADED:
             self._display_mode = DisplayMode.WIREFRAME
+        elif self._display_mode is DisplayMode.WIREFRAME:
+            self._display_mode = DisplayMode.WIREFRAME_NO_BACK
         else:
             self._display_mode = DisplayMode.FLAT_SHADED
         if self._mesh is not None:
